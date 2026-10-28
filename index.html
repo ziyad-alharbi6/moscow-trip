@@ -4,30 +4,72 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>رحلتنا إلى موسكو</title>
 <style>
-:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#15243a;background:#f3f6fb}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(120deg,#164a80,#2077b3);color:#fff;padding:28px 18px}main{max-width:650px;margin:0 auto;padding:18px}h1{margin:0 0 6px;font-size:26px}h2{font-size:19px}.sub{opacity:.9}.panel{background:white;border-radius:16px;padding:18px;box-shadow:0 3px 15px #1232  ;margin-bottom:16px}label{display:block;font-weight:600;margin:8px 0}input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:11px;border:1px solid #d3deeb;border-radius:10px}button{border:0;background:#166aa8;color:#fff;padding:11px 15px;border-radius:10px;cursor:pointer}button.secondary{background:#eaf1f9;color:#23517b}button.danger{background:#fbe5e5;color:#a12626}.bar{display:flex;gap:8px;flex-wrap:wrap}.bar>*{flex:1}.place{display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid #e8eef5}.place:last-child{border-bottom:0}.place input{width:20px;height:20px}.place .details{flex:1}.done{text-decoration:line-through;color:#718092}.small{font-size:13px;color:#607083}.actions{display:flex;gap:5px}.actions button{padding:6px 9px;font-size:13px}.hidden{display:none}.notice{background:#fff5dd;border-radius:10px;padding:12px;font-size:13px;color:#79520a;margin-bottom:15px}a{color:#1a67a5}
+:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#15243a;background:#f3f6fb}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(120deg,#164a80,#2077b3);color:#fff;padding:28px 18px}main{max-width:650px;margin:0 auto;padding:18px}h1{margin:0 0 6px;font-size:26px}h2{font-size:19px}.sub{opacity:.9}.panel{background:white;border-radius:16px;padding:18px;box-shadow:0 3px 15px #1232  ;margin-bottom:16px}label{display:block;font-weight:600;margin:8px 0}input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:11px;border:1px solid #d3deeb;border-radius:10px}button{border:0;background:#166aa8;color:#fff;padding:11px 15px;border-radius:10px;cursor:pointer}button.secondary{background:#eaf1f9;color:#23517b}button.danger{background:#fbe5e5;color:#a12626}.bar{display:flex;gap:8px;flex-wrap:wrap}.bar>*{flex:1}.place{display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid #e8eef5}.place:last-child{border-bottom:0}.place input{width:20px;height:20px}.place .details{flex:1}.done{text-decoration:line-through;color:#718092}.small{font-size:13px;color:#607083}.actions{display:flex;gap:5px}.actions button{padding:6px 9px;font-size:13px}.hidden{display:none}.status{font-size:13px;color:#3a617e;margin:9px 0}.status.error{color:#a12626}.logout{background:#eaf1f9;color:#23517b}.place{flex-wrap:wrap}.actions{flex-wrap:wrap}.actions button{min-width:48px}.notice{background:#fff5dd;border-radius:10px;padding:12px;font-size:13px;color:#79520a;margin-bottom:15px}a{color:#1a67a5}
 </style>
 </head>
 <body>
 <header><div style="max-width:650px;margin:auto"><h1>🇷🇺 رحلتنا إلى موسكو</h1><div class="sub">7–18 يناير 2027 · 6 مسافرين</div></div></header>
 <main>
-<div class="notice">نسخة أولية: البيانات محفوظة على هذا الجهاز فقط. رمز الدخول والمزامنة الجماعية سنضيفهما في المرحلة التالية.</div>
+<section id="loginPanel" class="panel"><h2>🔐 دخول الرحلة</h2><p class="small">اكتب رمز الرحلة المشترك. لا ترسله إلا لأفراد المجموعة.</p><form id="loginForm"><label for="accessCode">رمز الدخول</label><input id="accessCode" type="password" autocomplete="off" maxlength="128" required><button id="loginButton" style="margin-top:12px" type="submit">دخول</button></form><p id="loginStatus" class="status" role="status"></p></section>
+<div id="appPanel" class="hidden"><div class="bar" style="margin-bottom:12px"><button class="secondary" id="refresh" type="button">تحديث الجدول</button><button class="logout" id="logout" type="button">خروج</button></div><p id="syncStatus" class="status" role="status"></p>
 <section class="panel"><label for="day">اختر اليوم</label><select id="day"></select></section>
 <section class="panel"><h2 id="dayTitle"></h2><div id="items"></div><p id="empty" class="small">ما فيه فعاليات لهذا اليوم. أضف أول فعالية!</p></section>
 <section class="panel"><h2 id="formTitle">إضافة فعالية</h2><form id="activityForm"><input type="hidden" id="editId"><label for="name">اسم المكان أو الفعالية</label><input id="name" required placeholder="مثلاً: الساحة الحمراء"><label for="time">الوقت</label><input id="time" type="time" required><label for="location">رابط الموقع (اختياري)</label><input id="location" type="url" placeholder="https://maps.google.com/..."><label for="notes">ملاحظات (اختياري)</label><textarea id="notes" rows="2" placeholder="حجز تذكرة، مطعم قريب..."></textarea><div class="bar" style="margin-top:12px"><button type="submit">حفظ الفعالية</button><button type="button" id="cancel" class="secondary hidden">إلغاء التعديل</button></div></form></section>
-</main>
+</div></main>
 <script>
 'use strict';
-const KEY='moscow-trip-v1';
-let activities=[];
-try{const stored=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(stored)) activities=stored;}catch(e){console.warn('تعذر قراءة البيانات المحلية',e)}
+// هذا عنوان عام للدالة فقط، وليس مفتاحًا سريًا.
+const API='https://jwjskcqyoxlmkwjstxhc.supabase.co/functions/v1/swift-action';
 const $=id=>document.getElementById(id);
 const days=Array.from({length:12},(_,i)=>{const d=new Date(Date.UTC(2027,0,7+i));return {value:d.toISOString().slice(0,10),label:new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}).format(d)}});
 for(const d of days){const o=document.createElement('option');o.value=d.value;o.textContent=d.label;$('day').append(o)}
-function save(){localStorage.setItem(KEY,JSON.stringify(activities))}
+let activities=[];
+let accessCode=''; // ذاكرة التبويب فقط، لا نضع الرمز في GitHub أو localStorage
+let busy=false;
+let polling=null;
+function status(message,error=false,login=false){const e=$(login?'loginStatus':'syncStatus');e.textContent=message;e.classList.toggle('error',error)}
+async function call(action,data){
+  const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:accessCode,action,data})});
+  let body;try{body=await res.json()}catch{throw new Error('تعذر قراءة رد الخادم')}
+  if(!res.ok || !body.success){if(res.status===401) throw new Error('رمز الدخول خاطئ أو تم تغييره');throw new Error(body.message||body.error||'تعذر إتمام العملية')}
+  return body;
+}
 function reset(){ $('activityForm').reset();$('editId').value='';$('cancel').classList.add('hidden');$('formTitle').textContent='إضافة فعالية'}
-function render(){const date=$('day').value;$('dayTitle').textContent=days.find(d=>d.value===date)?.label||'';const items=$('items');items.replaceChildren();const todays=activities.filter(a=>a.date===date).sort((a,b)=>a.time.localeCompare(b.time));$('empty').classList.toggle('hidden',todays.length>0);for(const a of todays){const row=document.createElement('div');row.className='place';const chk=document.createElement('input');chk.type='checkbox';chk.checked=!!a.done;chk.setAttribute('aria-label','تمت زيارة '+a.name);chk.onchange=()=>{a.done=chk.checked;save();render()};const details=document.createElement('div');details.className='details';const title=document.createElement('strong');title.textContent=a.name;title.className=a.done?'done':'';const meta=document.createElement('div');meta.className='small';meta.textContent=a.time+(a.notes?' · '+a.notes:'');details.append(title,meta);if(a.location){const link=document.createElement('a');link.href=a.location;link.target='_blank';link.rel='noopener noreferrer';link.textContent='📍 فتح الموقع';details.append(link)}const actions=document.createElement('div');actions.className='actions';const edit=document.createElement('button');edit.className='secondary';edit.textContent='تعديل';edit.onclick=()=>{ $('editId').value=a.id;$('name').value=a.name;$('time').value=a.time;$('location').value=a.location||'';$('notes').value=a.notes||'';$('cancel').classList.remove('hidden');$('formTitle').textContent='تعديل الفعالية';$('name').focus()};const del=document.createElement('button');del.className='danger';del.textContent='حذف';del.onclick=()=>{if(confirm('هل تريد حذف هذه الفعالية؟')){activities=activities.filter(x=>x.id!==a.id);save();render()}};actions.append(edit,del);row.append(chk,details,actions);items.append(row)}}
-$('day').onchange=()=>{reset();render()};$('cancel').onclick=reset;
-$('activityForm').onsubmit=e=>{e.preventDefault();const id=$('editId').value;const info={date:$('day').value,name:$('name').value.trim(),time:$('time').value,location:$('location').value.trim(),notes:$('notes').value.trim()};if(!info.name)return;if(id){const a=activities.find(x=>x.id===id);if(a)Object.assign(a,info)}else activities.push({id:crypto.randomUUID(),done:false,...info});save();reset();render()};
-render();
+async function load(quiet=false){
+  if(!accessCode||busy)return;
+  try{const result=await call('list');activities=result.activities||[];render();if(!quiet)status('✅ تم تحديث الجدول المشترك')}
+  catch(e){if(!quiet)status('تعذر التحديث: '+e.message,true)}
+}
+function setBusy(v){busy=v;$('activityForm').querySelector('button[type=submit]').disabled=v}
+async function change(action,data){if(busy)return;setBusy(true);try{await call(action,data);await loadForce();status('✅ التغيير محفوظ عند الجميع');return true}catch(e){status('خطأ: '+e.message,true);return false}finally{setBusy(false)}}
+async function loadForce(){const result=await call('list');activities=result.activities||[];render()}
+function render(){
+ const date=$('day').value;$('dayTitle').textContent=days.find(d=>d.value===date)?.label||'';
+ const items=$('items');items.replaceChildren();const todays=activities.filter(a=>a.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+ $('empty').classList.toggle('hidden',todays.length>0);
+ for(const a of todays){
+  const row=document.createElement('div');row.className='place';
+  const chk=document.createElement('input');chk.type='checkbox';chk.checked=!!a.done;chk.setAttribute('aria-label','تمت زيارة '+a.name);
+  chk.onchange=async()=>{const ok=await change('toggle',{id:a.id,done:chk.checked});if(!ok)render()};
+  const details=document.createElement('div');details.className='details';
+  const title=document.createElement('strong');title.textContent=a.name;title.className=a.done?'done':'';
+  const meta=document.createElement('div');meta.className='small';meta.textContent=a.time.slice(0,5)+(a.notes?' · '+a.notes:'');details.append(title,meta);
+  if(a.location){const link=document.createElement('a');link.href=a.location;link.target='_blank';link.rel='noopener noreferrer';link.textContent='📍 فتح الموقع';details.append(link)}
+  const actions=document.createElement('div');actions.className='actions';const edit=document.createElement('button');edit.className='secondary';edit.textContent='تعديل';
+  edit.onclick=()=>{$('editId').value=a.id;$('name').value=a.name;$('time').value=a.time.slice(0,5);$('location').value=a.location||'';$('notes').value=a.notes||'';$('cancel').classList.remove('hidden');$('formTitle').textContent='تعديل الفعالية';$('name').focus()};
+  const del=document.createElement('button');del.className='danger';del.textContent='حذف';del.onclick=async()=>{if(confirm('هل تريد حذف هذه الفعالية؟'))await change('delete',{id:a.id})};
+  actions.append(edit,del);row.append(chk,details,actions);items.append(row);
+ }
+}
+$('loginForm').onsubmit=async(e)=>{
+ e.preventDefault();accessCode=$('accessCode').value;
+ $('loginButton').disabled=true;status('جاري التحقق...',false,true);
+ try{await call('login');const result=await call('list');activities=result.activities||[];$('loginPanel').classList.add('hidden');$('appPanel').classList.remove('hidden');$('accessCode').value='';render();status('✅ متصل بجدول الرحلة المشترك');polling=setInterval(()=>{if(!document.hidden&&!busy)load(true)},15000)}
+ catch(err){accessCode='';status('تعذر الدخول: '+err.message,true,true)}
+ finally{$('loginButton').disabled=false}
+};
+$('day').onchange=()=>{reset();render()};$('cancel').onclick=reset;$('refresh').onclick=()=>load();
+$('logout').onclick=()=>{accessCode='';activities=[];clearInterval(polling);$('appPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');$('loginStatus').textContent='';reset()};
+$('activityForm').onsubmit=async(e)=>{e.preventDefault();const id=$('editId').value;const info={date:$('day').value,name:$('name').value.trim(),time:$('time').value,location:$('location').value.trim(),notes:$('notes').value.trim()};if(!info.name)return;const ok=await change(id?'update':'add',id?{id,...info}:info);if(ok)reset()};
 </script>
 </body></html>
