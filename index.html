@@ -24,19 +24,19 @@ const $=id=>document.getElementById(id);
 const days=Array.from({length:12},(_,i)=>{const d=new Date(Date.UTC(2027,0,7+i));return {value:d.toISOString().slice(0,10),label:new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}).format(d)}});
 for(const d of days){const o=document.createElement('option');o.value=d.value;o.textContent=d.label;$('day').append(o)}
 let activities=[];
-let accessCode=''; // ذاكرة التبويب فقط، لا نضع الرمز في GitHub أو localStorage
+let sessionToken=localStorage.getItem('moscow_trip_session') || ''; // جلسة موقعة، وليست رمز الرحلة
 let busy=false;
 let polling=null;
 function status(message,error=false,login=false){const e=$(login?'loginStatus':'syncStatus');e.textContent=message;e.classList.toggle('error',error)}
 async function call(action,data){
-  const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:accessCode,action,data})});
+  const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:sessionToken,action,data})});
   let body;try{body=await res.json()}catch{throw new Error('تعذر قراءة رد الخادم')}
-  if(!res.ok || !body.success){if(res.status===401) throw new Error('رمز الدخول خاطئ أو تم تغييره');throw new Error(body.message||body.error||'تعذر إتمام العملية')}
+  if(!res.ok || !body.success){if(res.status===401){logout(true);throw new Error('انتهت الجلسة؛ أدخل رمز الرحلة مجددًا')} throw new Error(body.message||body.error||'تعذر إتمام العملية')}
   return body;
 }
 function reset(){ $('activityForm').reset();$('editId').value='';$('cancel').classList.add('hidden');$('formTitle').textContent='إضافة فعالية'}
 async function load(quiet=false){
-  if(!accessCode||busy)return;
+  if(!sessionToken||busy)return;
   try{const result=await call('list');activities=result.activities||[];render();if(!quiet)status('✅ تم تحديث الجدول المشترك')}
   catch(e){if(!quiet)status('تعذر التحديث: '+e.message,true)}
 }
@@ -62,14 +62,41 @@ function render(){
  }
 }
 $('loginForm').onsubmit=async(e)=>{
- e.preventDefault();accessCode=$('accessCode').value;
+ e.preventDefault();
  $('loginButton').disabled=true;status('جاري التحقق...',false,true);
- try{await call('login');const result=await call('list');activities=result.activities||[];$('loginPanel').classList.add('hidden');$('appPanel').classList.remove('hidden');$('accessCode').value='';render();status('✅ متصل بجدول الرحلة المشترك');polling=setInterval(()=>{if(!document.hidden&&!busy)load(true)},15000)}
- catch(err){accessCode='';status('تعذر الدخول: '+err.message,true,true)}
+ try{
+  const code=$('accessCode').value;
+  const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',code})});
+  const body=await res.json();
+  if(!res.ok||!body.success||!body.token)throw new Error(body.message||body.error||'رمز الدخول غير صحيح');
+  sessionToken=body.token; localStorage.setItem('moscow_trip_session',sessionToken);
+  $('accessCode').value='';await enter();
+ }catch(err){status('تعذر الدخول: '+err.message,true,true)}
  finally{$('loginButton').disabled=false}
 };
+async function enter(){
+ const result=await call('list'); activities=result.activities||[];
+ $('loginPanel').classList.add('hidden');$('appPanel').classList.remove('hidden');render();
+ status('✅ متصل بجدول الرحلة المشترك');
+ clearInterval(polling);polling=setInterval(()=>{if(!document.hidden&&!busy)load(true)},15000);
+}
+function logout(showMessage=false){
+ sessionToken='';localStorage.removeItem('moscow_trip_session');activities=[];
+ clearInterval(polling);polling=null;
+ $('appPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');reset();
+ $('loginStatus').textContent=showMessage?'انتهت جلستك. سجّل الدخول مرة أخرى.':'';
+}
+async function restoreSession(){
+ if(!sessionToken)return;
+ status('جاري استعادة الجلسة...',false,true);
+ try{await enter()}catch(e){
+  if(!sessionToken)return;
+  status('تعذر الاتصال؛ حاول تحديث الصفحة. '+e.message,true,true);
+ }
+}
 $('day').onchange=()=>{reset();render()};$('cancel').onclick=reset;$('refresh').onclick=()=>load();
-$('logout').onclick=()=>{accessCode='';activities=[];clearInterval(polling);$('appPanel').classList.add('hidden');$('loginPanel').classList.remove('hidden');$('loginStatus').textContent='';reset()};
+$('logout').onclick=()=>logout();
 $('activityForm').onsubmit=async(e)=>{e.preventDefault();const id=$('editId').value;const info={date:$('day').value,name:$('name').value.trim(),time:$('time').value,location:$('location').value.trim(),notes:$('notes').value.trim()};if(!info.name)return;const ok=await change(id?'update':'add',id?{id,...info}:info);if(ok)reset()};
+restoreSession();
 </script>
 </body></html>
