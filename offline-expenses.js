@@ -12,15 +12,22 @@
  async function tx(mode,fn){const db=await openDB();return new Promise((resolve,reject)=>{const t=db.transaction('pending',mode);const store=t.objectStore('pending');const req=fn(store);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);t.oncomplete=()=>db.close();t.onerror=()=>reject(t.error)})}
  const all=()=>tx('readonly',s=>s.getAll());const put=x=>tx('readwrite',s=>s.put(x));const del=id=>tx('readwrite',s=>s.delete(id));
  async function render(){try{const entries=await all();msg.textContent=`${entries.length} مصروف بانتظار المزامنة${!navigator.onLine?' · الجوال بدون إنترنت':''}`;marker.style.display=entries.length?'block':'block';}catch(e){msg.textContent='تعذر حفظ المصاريف محليًا في هذا المتصفح: '+e.message}}
- async function sync(){if(syncing||!navigator.onLine||!sessionToken||!memberToken)return;syncing=true;try{for(const item of await all()){
+ async function sync(){
+  if(syncing)return;
+  if(!navigator.onLine){msg.textContent='📴 لا يوجد إنترنت؛ مصاريفك محفوظة على هذا الجهاز';return}
+  if(!sessionToken){msg.textContent='سجّل دخول الرحلة لإرسال المصاريف المعلقة';return}
+  if(!memberToken||!memberId){msg.textContent='ادخل حساب مصاريفك الشخصي للمزامنة';return}
+  syncing=true;btn.disabled=true;msg.textContent='🔄 جارٍ رفع المصاريف...';
+  try{let synced=0;let other=0;for(const item of await all()){
    // Never send a pending private expense using another member's account.
-   if(item.owner_id!==memberId)continue;
-   try{await call('expense_add',item.data);await del(item.client_id)}catch(e){msg.textContent='تعذرت المزامنة: '+e.message;break}
-  }await render();try{await load(true)}catch{}}
-  finally{syncing=false;}
+   if(item.owner_id!==memberId){other++;continue;}
+   try{await call('expense_add',item.data);await del(item.client_id);synced++}catch(e){msg.textContent='تعذرت المزامنة: '+e.message;break}
+  }await render();msg.textContent=`✅ تمت مزامنة ${synced} مصروف`+(other?` · ${other} تخص حسابًا آخر على هذا الجهاز`:'');try{await load(true)}catch{}}
+  catch(e){msg.textContent='⚠️ تعذرت المزامنة: '+e.message}
+  finally{syncing=false;btn.disabled=false;}
  }
- btn.onclick=sync;
- window.addEventListener('online',()=>sync());
+ btn.onclick=()=>sync();window.moscowSyncExpenses=sync;
+ window.addEventListener('online',()=>setTimeout(sync,600));window.addEventListener('moscow-member-ready',()=>setTimeout(sync,400));
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
  setInterval(()=>{if(!document.hidden)sync()},20000);
  form.addEventListener('submit',async e=>{
